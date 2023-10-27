@@ -37,11 +37,13 @@ func main() {
 	windSpeed := weather.Current.WindSpeed
 	rainLevel := weather.Current.Rain.The1H
 	snowLevel := weather.Current.Snow.The1H
+	pressure := weather.Current.Pressure
+	humidity := weather.Current.Humidity
 
 	time_ := time.Now()
 	fullness := int(clubDetails.Fullness * 100)
 
-	err = SaveClubFullnessToSheet(cfg.GSheets.SheetID, cfg.GSheets.DataRange, time_, fullness, temp, feelsLike, windSpeed, rainLevel, snowLevel)
+	err = SaveClubFullnessToSheet(cfg.GSheets.SheetID, cfg.GSheets.DataRange, time_, fullness, temp, feelsLike, windSpeed, rainLevel, snowLevel, pressure, humidity)
 	if err != nil {
 		log.Fatalf("Can't write club load to sheet: %s", err)
 	}
