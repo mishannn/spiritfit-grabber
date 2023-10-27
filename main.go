@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"strconv"
 	"time"
 )
 
@@ -16,10 +17,31 @@ func main() {
 		log.Fatalf("Can't get club details: %s", err)
 	}
 
-	t := time.Now()
-	l := int(clubDetails.Fullness * 100)
+	lat, err := strconv.ParseFloat(clubDetails.Latitude, 64)
+	if err != nil {
+		log.Fatalf("Can't parse club latitude: %s", err)
+	}
 
-	err = SaveClubFullnessToSheet(cfg.GSheets.SheetID, cfg.GSheets.DataRange, t, l)
+	lon, err := strconv.ParseFloat(clubDetails.Longitude, 64)
+	if err != nil {
+		log.Fatalf("Can't parse club longitude: %s", err)
+	}
+
+	weather, err := GetWeather(cfg.OpenWeather.APIKey, lat, lon)
+	if err != nil {
+		log.Fatalf("Can't get weather: %s", err)
+	}
+
+	temp := ConvertKelvinToCelsius(weather.Current.Temp)
+	feelsLike := ConvertKelvinToCelsius(weather.Current.FeelsLike)
+	windSpeed := weather.Current.WindSpeed
+	rainLevel := weather.Current.Rain.The1H
+	snowLevel := weather.Current.Snow.The1H
+
+	time_ := time.Now()
+	fullness := int(clubDetails.Fullness * 100)
+
+	err = SaveClubFullnessToSheet(cfg.GSheets.SheetID, cfg.GSheets.DataRange, time_, fullness, temp, feelsLike, windSpeed, rainLevel, snowLevel)
 	if err != nil {
 		log.Fatalf("Can't write club load to sheet: %s", err)
 	}

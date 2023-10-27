@@ -16,6 +16,9 @@ type Config struct {
 		SheetID   string `yaml:"sheet_id"`
 		DataRange string `yaml:"data_range"`
 	} `yaml:"gsheets"`
+	OpenWeather struct {
+		APIKey string `yaml:"apikey"`
+	} `yaml:"openweather"`
 }
 
 // NewConfig returns a new decoded Config struct

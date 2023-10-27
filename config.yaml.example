@@ -4,3 +4,5 @@ spirit:
 gsheets:
   sheet_id: '...'
   data_range: 'Sheet1!A2:B'
+openweather:
+  apikey: '...'
