@@ -31,7 +31,7 @@ func SaveClubFullnessToSheet(spreadsheetId string, dataRange string, t time.Time
 
 	var vr sheets.ValueRange
 	value := []interface{}{
-		t.Format(time.DateTime),
+		t.UTC().Format(time.DateTime),
 		fullness,
 		temp,
 		feelsLike,
