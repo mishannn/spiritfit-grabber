@@ -11,7 +11,7 @@ import (
 	"google.golang.org/api/sheets/v4"
 )
 
-func SaveClubFullnessToSheet(spreadsheetId string, dataRange string, time time.Time, fullness int, temp float64, feelsLike float64, windSpeed float64, rainLevel float64, snowLevel float64, pressure float64, humidity float64) error {
+func SaveClubFullnessToSheet(spreadsheetId string, dataRange string, t time.Time, fullness int, temp float64, feelsLike float64, windSpeed float64, rainLevel float64, snowLevel float64, pressure float64, humidity float64) error {
 	ctx := context.Background()
 	b, err := os.ReadFile("credentials.json")
 	if err != nil {
@@ -31,7 +31,7 @@ func SaveClubFullnessToSheet(spreadsheetId string, dataRange string, time time.T
 
 	var vr sheets.ValueRange
 	value := []interface{}{
-		time.Format("01/02/2006 15:04:05"),
+		t.Format(time.DateTime),
 		fullness,
 		temp,
 		feelsLike,
