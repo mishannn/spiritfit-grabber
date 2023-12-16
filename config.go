@@ -12,13 +12,15 @@ type Config struct {
 		Token  string `yaml:"token"`
 		ClubID string `yaml:"club_id"`
 	} `yaml:"spirit"`
-	GSheets struct {
-		SheetID   string `yaml:"sheet_id"`
-		DataRange string `yaml:"data_range"`
-	} `yaml:"gsheets"`
 	OpenWeather struct {
 		APIKey string `yaml:"apikey"`
 	} `yaml:"openweather"`
+	Database struct {
+		Address  string `yaml:"address"`
+		Database string `yaml:"database"`
+		Username string `yaml:"username"`
+		Password string `yaml:"password"`
+	} `yaml:"database"`
 }
 
 // NewConfig returns a new decoded Config struct

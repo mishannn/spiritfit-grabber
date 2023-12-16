@@ -1,15 +1,51 @@
 package main
 
 import (
+	"database/sql"
+	"embed"
+	"fmt"
 	"log"
 	"strconv"
 	"time"
+
+	"github.com/ClickHouse/clickhouse-go/v2"
+	"github.com/pressly/goose/v3"
 )
+
+//go:embed migrations/*.sql
+var embedMigrations embed.FS
+
+func upMigrations(db *sql.DB) error {
+	goose.SetBaseFS(embedMigrations)
+
+	if err := goose.SetDialect("clickhouse"); err != nil {
+		return fmt.Errorf("can't set dialect for migrations: %w", err)
+	}
+
+	if err := goose.Up(db, "migrations"); err != nil {
+		return fmt.Errorf("can't up migrations: %w", err)
+	}
+
+	return nil
+}
 
 func main() {
 	cfg, err := NewConfig("config.yaml")
 	if err != nil {
 		log.Fatalf("Can't get config: %s", err)
+	}
+
+	db := clickhouse.OpenDB(&clickhouse.Options{
+		Addr: []string{cfg.Database.Address},
+		Auth: clickhouse.Auth{
+			Database: cfg.Database.Database,
+			Username: cfg.Database.Username,
+			Password: cfg.Database.Password,
+		},
+	})
+	err = upMigrations(db)
+	if err != nil {
+		log.Fatalf("can't up migrations: %s", err)
 	}
 
 	clubDetails, err := GetClubDetails(cfg.Spirit.Token, cfg.Spirit.ClubID)
@@ -40,11 +76,12 @@ func main() {
 	pressure := weather.Current.Pressure
 	humidity := weather.Current.Humidity
 
-	time_ := time.Now()
+	collectTime := time.Now()
 	fullness := int(clubDetails.Fullness * 100)
 
-	err = SaveClubFullnessToSheet(cfg.GSheets.SheetID, cfg.GSheets.DataRange, time_, fullness, temp, feelsLike, windSpeed, rainLevel, snowLevel, pressure, humidity)
+	_, err = db.Exec("INSERT INTO club_fullness (DateTime, Fullness, Temp, FeelsLike, WindSpeed, RainLevel, SnowLevel, Pressure, Humidity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		collectTime, fullness, temp, feelsLike, windSpeed, rainLevel, snowLevel, pressure, humidity)
 	if err != nil {
-		log.Fatalf("Can't write club load to sheet: %s", err)
+		log.Fatalf("Can't save club fullness: %s", err)
 	}
 }
