@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"time"
 
@@ -29,10 +30,11 @@ func upMigrations(db *sql.DB) error {
 	return nil
 }
 
-func main() {
+func runApplication() int {
 	cfg, err := NewConfig("config.yaml")
 	if err != nil {
-		log.Fatalf("Can't get config: %s", err)
+		log.Printf("can't get config: %s", err)
+		return 1
 	}
 
 	db := clickhouse.OpenDB(&clickhouse.Options{
@@ -45,27 +47,32 @@ func main() {
 	})
 	err = upMigrations(db)
 	if err != nil {
-		log.Fatalf("can't up migrations: %s", err)
+		log.Printf("can't up migrations: %s", err)
+		return 1
 	}
 
 	clubDetails, err := GetClubDetails(cfg.Spirit.Token, cfg.Spirit.ClubID)
 	if err != nil {
-		log.Fatalf("Can't get club details: %s", err)
+		log.Printf("can't get club details: %s", err)
+		return 1
 	}
 
 	lat, err := strconv.ParseFloat(clubDetails.Latitude, 64)
 	if err != nil {
-		log.Fatalf("Can't parse club latitude: %s", err)
+		log.Printf("can't parse club latitude: %s", err)
+		return 1
 	}
 
 	lon, err := strconv.ParseFloat(clubDetails.Longitude, 64)
 	if err != nil {
-		log.Fatalf("Can't parse club longitude: %s", err)
+		log.Printf("can't parse club longitude: %s", err)
+		return 1
 	}
 
 	weather, err := GetWeather(cfg.OpenWeather.APIKey, lat, lon)
 	if err != nil {
-		log.Fatalf("Can't get weather: %s", err)
+		log.Printf("can't get weather: %s", err)
+		return 1
 	}
 
 	temp := ConvertKelvinToCelsius(weather.Current.Temp)
@@ -82,6 +89,13 @@ func main() {
 	_, err = db.Exec("INSERT INTO club_fullness (DateTime, Fullness, Temp, FeelsLike, WindSpeed, RainLevel, SnowLevel, Pressure, Humidity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		collectTime, fullness, temp, feelsLike, windSpeed, rainLevel, snowLevel, pressure, humidity)
 	if err != nil {
-		log.Fatalf("Can't save club fullness: %s", err)
+		log.Printf("can't save club fullness: %s", err)
+		return 1
 	}
+
+	return 0
+}
+
+func main() {
+	os.Exit(runApplication())
 }
