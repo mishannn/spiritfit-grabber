@@ -12,9 +12,6 @@ type Config struct {
 		Token  string `yaml:"token"`
 		ClubID string `yaml:"club_id"`
 	} `yaml:"spirit"`
-	OpenWeather struct {
-		APIKey string `yaml:"apikey"`
-	} `yaml:"openweather"`
 	Database struct {
 		Address  string `yaml:"address"`
 		Database string `yaml:"database"`

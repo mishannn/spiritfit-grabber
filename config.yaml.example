@@ -1,8 +1,6 @@
 spirit:
   token: '...'
   club_id: '03'
-openweather:
-  apikey: '...'
 database:
   address: '...'
   database: '...'

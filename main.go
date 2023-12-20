@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
@@ -57,37 +56,10 @@ func runApplication() int {
 		return 1
 	}
 
-	lat, err := strconv.ParseFloat(clubDetails.Latitude, 64)
-	if err != nil {
-		log.Printf("can't parse club latitude: %s", err)
-		return 1
-	}
-
-	lon, err := strconv.ParseFloat(clubDetails.Longitude, 64)
-	if err != nil {
-		log.Printf("can't parse club longitude: %s", err)
-		return 1
-	}
-
-	weather, err := GetWeather(cfg.OpenWeather.APIKey, lat, lon)
-	if err != nil {
-		log.Printf("can't get weather: %s", err)
-		return 1
-	}
-
-	temp := ConvertKelvinToCelsius(weather.Current.Temp)
-	feelsLike := ConvertKelvinToCelsius(weather.Current.FeelsLike)
-	windSpeed := weather.Current.WindSpeed
-	rainLevel := weather.Current.Rain.The1H
-	snowLevel := weather.Current.Snow.The1H
-	pressure := weather.Current.Pressure
-	humidity := weather.Current.Humidity
-
 	collectTime := time.Now()
 	fullness := int(clubDetails.Fullness * 100)
 
-	_, err = db.Exec("INSERT INTO club_fullness (DateTime, Fullness, Temp, FeelsLike, WindSpeed, RainLevel, SnowLevel, Pressure, Humidity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		collectTime, fullness, temp, feelsLike, windSpeed, rainLevel, snowLevel, pressure, humidity)
+	_, err = db.Exec("INSERT INTO club_fullness (DateTime, Fullness) VALUES ($1, $2)", collectTime, fullness)
 	if err != nil {
 		log.Printf("can't save club fullness: %s", err)
 		return 1
