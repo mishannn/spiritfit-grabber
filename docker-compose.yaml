@@ -1,0 +1,32 @@
+services:
+  app:
+    build: .
+    ports:
+      - 8080:8080
+    depends_on:
+      - postgres
+    volumes:
+      - ./config.yaml:/config.yaml
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15
+    container_name: postgres_db
+    environment:
+      POSTGRES_DB: spiritfit
+      POSTGRES_USER: spiritfit
+      POSTGRES_PASSWORD: pVBLRG7FE2_ZijzB3UREFpkLYwwftu
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d spiritfit"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local

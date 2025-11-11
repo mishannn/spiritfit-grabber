@@ -1,8 +1,0 @@
-spirit:
-  token: '...'
-  club_id: '03'
-database:
-  address: '...'
-  database: '...'
-  username: '...'
-  password: '...'

@@ -1,0 +1,10 @@
+spirit:
+  token: "strong_secret"
+  club_id: "03"
+database:
+  address: "127.0.0.1"
+  port: 5432
+  database: "spiritfit"
+  username: "spiritfit"
+  password: "strong_secret"
+cron_with_seconds: "*/5 * * * * *"

@@ -14,10 +14,12 @@ type Config struct {
 	} `yaml:"spirit"`
 	Database struct {
 		Address  string `yaml:"address"`
+		Port     int    `yaml:"port"`
 		Database string `yaml:"database"`
 		Username string `yaml:"username"`
 		Password string `yaml:"password"`
 	} `yaml:"database"`
+	CronWithSeconds string `yaml:"cron_with_seconds"`
 }
 
 // NewConfig returns a new decoded Config struct

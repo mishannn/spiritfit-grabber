@@ -1,73 +1,127 @@
 package main
 
 import (
-	"database/sql"
-	"embed"
+	"context"
+	"flag"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/ClickHouse/clickhouse-go/v2"
-	"github.com/pressly/goose/v3"
+	"github.com/robfig/cron/v3"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
-//go:embed migrations/*.sql
-var embedMigrations embed.FS
+type ClubFullness struct {
+	ID        int64     `gorm:"primarykey"`
+	Timestamp time.Time `gorm:"index"`
+	Fullness  int
+}
 
-func upMigrations(db *sql.DB) error {
-	goose.SetBaseFS(embedMigrations)
-
-	if err := goose.SetDialect("clickhouse"); err != nil {
-		return fmt.Errorf("can't set dialect for migrations: %w", err)
+func buildDSN(host string, port int, user, password, dbname string) string {
+	u := &url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(user, password),
+		Host:   fmt.Sprintf("%s:%d", host, port),
+		Path:   dbname,
 	}
 
-	if err := goose.Up(db, "migrations"); err != nil {
-		return fmt.Errorf("can't up migrations: %w", err)
+	return u.String()
+}
+
+func runApplication() error {
+	var configPath string
+	flag.StringVar(&configPath, "c", "config.yaml", "config path")
+	flag.Parse()
+
+	cfg, err := NewConfig(configPath)
+	if err != nil {
+		return fmt.Errorf("can't get config: %w", err)
 	}
+
+	// ---
+
+	db, err := gorm.Open(
+		postgres.Open(
+			buildDSN(
+				cfg.Database.Address,
+				cfg.Database.Port,
+				cfg.Database.Username,
+				cfg.Database.Password,
+				cfg.Database.Database,
+			),
+		),
+		&gorm.Config{},
+	)
+	if err != nil {
+		return fmt.Errorf("can't open database: %w", err)
+	}
+
+	err = db.AutoMigrate(&ClubFullness{})
+	if err != nil {
+		return fmt.Errorf("can't apply migrations: %w", err)
+	}
+
+	// ---
+
+	c := cron.New(cron.WithSeconds())
+
+	_, err = c.AddFunc(cfg.CronWithSeconds, func() {
+		clubDetails, err := GetClubDetails(cfg.Spirit.Token, cfg.Spirit.ClubID)
+		if err != nil {
+			log.Printf("can't get club details: %sw\n", err)
+			return
+		}
+
+		clubFullness := ClubFullness{
+			Timestamp: time.Now(),
+			Fullness:  int(clubDetails.Fullness * 100),
+		}
+
+		tx := db.Create(&clubFullness)
+		if tx.Error != nil {
+			log.Printf("can't save club fullness: %s\n", tx.Error)
+			return
+		}
+
+		log.Printf("written club fullness: %+v\n", clubFullness)
+	})
+	if err != nil {
+		return fmt.Errorf("can't add scheduled func: %w", err)
+	}
+
+	// ---
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	c.Start()
+	log.Println("started")
+
+	// ---
+
+	<-ctx.Done()
+	log.Println("stopping...")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	c.Stop()
+	log.Println("stopped")
+
+	<-shutdownCtx.Done()
 
 	return nil
 }
 
-func runApplication() int {
-	cfg, err := NewConfig("config.yaml")
-	if err != nil {
-		log.Printf("can't get config: %s", err)
-		return 1
-	}
-
-	db := clickhouse.OpenDB(&clickhouse.Options{
-		Addr: []string{cfg.Database.Address},
-		Auth: clickhouse.Auth{
-			Database: cfg.Database.Database,
-			Username: cfg.Database.Username,
-			Password: cfg.Database.Password,
-		},
-	})
-	err = upMigrations(db)
-	if err != nil {
-		log.Printf("can't up migrations: %s", err)
-		return 1
-	}
-
-	clubDetails, err := GetClubDetails(cfg.Spirit.Token, cfg.Spirit.ClubID)
-	if err != nil {
-		log.Printf("can't get club details: %s", err)
-		return 1
-	}
-
-	collectTime := time.Now()
-	fullness := int(clubDetails.Fullness * 100)
-
-	_, err = db.Exec("INSERT INTO club_fullness (DateTime, Fullness) VALUES ($1, $2)", collectTime, fullness)
-	if err != nil {
-		log.Printf("can't save club fullness: %s", err)
-		return 1
-	}
-
-	return 0
-}
-
 func main() {
-	os.Exit(runApplication())
+	if err := runApplication(); err != nil {
+		log.Fatalf("error: %s", err)
+	}
+
+	log.Println("exit")
 }
