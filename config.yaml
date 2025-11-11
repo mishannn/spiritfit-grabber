@@ -8,4 +8,4 @@ database:
   database: "spiritfit"
   username: !env_str "DB_USERNAME"
   password: !env_str "DB_PASSWORD"
-cron_with_seconds: "*/15 * * * * *"
+cron_with_seconds: "0 * * * * *"
