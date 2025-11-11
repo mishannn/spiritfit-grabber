@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
@@ -24,23 +24,37 @@ type Config struct {
 
 // NewConfig returns a new decoded Config struct
 func NewConfig(configPath string) (*Config, error) {
-	// Create config structure
-	config := &Config{}
-
-	// Open config file
 	file, err := os.Open(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("can't open config file: %w", err)
 	}
 	defer file.Close()
 
-	// Init new YAML decode
+	var root yaml.Node
 	d := yaml.NewDecoder(file)
-
-	// Start YAML decoding from file
-	if err := d.Decode(&config); err != nil {
+	if err := d.Decode(&root); err != nil {
 		return nil, fmt.Errorf("can't parse config file: %w", err)
 	}
 
+	replaceEnvVars(&root)
+
+	config := &Config{}
+	if err := root.Decode(config); err != nil {
+		return nil, fmt.Errorf("can't map config to struct: %w", err)
+	}
+
+	fmt.Printf("%+v\n", config)
 	return config, nil
+}
+
+// replaceEnvVars обходит ноды и подставляет значения из окружения
+func replaceEnvVars(node *yaml.Node) {
+	if node.Kind == yaml.ScalarNode && node.Tag == "!env_str" {
+		node.Value = os.Getenv(node.Value)
+		node.Tag = "" // убираем тег после подстановки
+	}
+
+	for _, child := range node.Content {
+		replaceEnvVars(child)
+	}
 }
