@@ -43,7 +43,6 @@ func NewConfig(configPath string) (*Config, error) {
 		return nil, fmt.Errorf("can't map config to struct: %w", err)
 	}
 
-	fmt.Printf("%+v\n", config)
 	return config, nil
 }
 
