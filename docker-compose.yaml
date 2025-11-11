@@ -6,7 +6,7 @@ services:
     environment:
       SPIRIT_TOKEN: ${SPIRIT_TOKEN}
       SPIRIT_CLUB: ${SPIRIT_CLUB}
-      DB_USER: ${DB_USER}
+      DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
     depends_on:
       - postgres
