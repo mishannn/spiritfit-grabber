@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -67,7 +67,7 @@ func GetClubDetails(token string, club string) (*ClubDetails, error) {
 	}
 	defer res.Body.Close()
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, fmt.Errorf("can't read response body: %w", err)
 	}
@@ -75,7 +75,7 @@ func GetClubDetails(token string, club string) (*ClubDetails, error) {
 	var data ClubDetailsResponse
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		return nil, fmt.Errorf("can't parse response body: %w", err)
+		return nil, fmt.Errorf("can't parse response body: %w, %s", err, body)
 	}
 
 	if data.ErrorCode != 0 {
