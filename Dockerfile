@@ -25,8 +25,6 @@ ARG APP_GID=10001
 
 COPY --from=builder /app /app
 
-EXPOSE 8080
-
 USER ${APP_UID}:${APP_GID}
 
 WORKDIR /
