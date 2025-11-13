@@ -32,6 +32,24 @@ services:
       timeout: 5s
       retries: 5
 
+  postgres-backup:
+    build: ./postgres-backup
+    restart: unless-stopped
+    environment:
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_USER: ${DB_USERNAME}
+      PG_PASSWORD: ${DB_PASSWORD}
+      PG_DATABASE: spiritfit
+      DUMP_DIR: /dumps
+      BACKUP_INTERVAL_SECONDS: 3600
+      AWS_ENDPOINT_URL: https://storage.yandexcloud.net
+      S3_BUCKET: ${S3_BUCKET}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    volumes:
+      - ./dumps:/dumps
+
 volumes:
   postgres_data:
     driver: local
