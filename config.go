@@ -12,13 +12,9 @@ type Config struct {
 		Token  string `yaml:"token"`
 		ClubID string `yaml:"club_id"`
 	} `yaml:"spirit"`
-	Database struct {
-		Address  string `yaml:"address"`
-		Port     int    `yaml:"port"`
-		Database string `yaml:"database"`
-		Username string `yaml:"username"`
-		Password string `yaml:"password"`
-	} `yaml:"database"`
+	Metrics struct {
+		PrometheusURL string `yaml:"prometheus_url"`
+	} `yaml:"metrics"`
 	CronWithSeconds string `yaml:"cron_with_seconds"`
 }
 

@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 )
 
@@ -50,8 +52,18 @@ type SubscriptionCost struct {
 }
 
 func GetClubDetails(token string, club string) (*ClubDetails, error) {
+	if token == "" {
+		return nil, errors.New("token is required")
+	}
+
+	if club == "" {
+		return nil, errors.New("club is required")
+	}
+
 	url := fmt.Sprintf("https://app.spiritfit.ru/Fitness/hs/mobile/clubs/%s", club)
 	method := "GET"
+
+	log.Printf("get club details: url %s\n", url)
 
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, nil)
@@ -67,6 +79,10 @@ func GetClubDetails(token string, club string) (*ClubDetails, error) {
 	}
 	defer res.Body.Close()
 
+	if res.StatusCode != 200 {
+		return nil, fmt.Errorf("server returns unexpected status code %d, expected 200", res.StatusCode)
+	}
+
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, fmt.Errorf("can't read response body: %w", err)
@@ -75,7 +91,7 @@ func GetClubDetails(token string, club string) (*ClubDetails, error) {
 	var data ClubDetailsResponse
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		return nil, fmt.Errorf("can't parse response body: %w, %s", err, body)
+		return nil, fmt.Errorf("can't parse response body: %w; value: `%s`", err, body)
 	}
 
 	if data.ErrorCode != 0 {

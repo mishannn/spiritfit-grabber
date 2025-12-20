@@ -1,36 +1,48 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
-	"net/url"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/robfig/cron/v3"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
-type ClubFullness struct {
-	ID        int64     `gorm:"primarykey"`
-	Timestamp time.Time `gorm:"index"`
-	Fullness  int
-}
+func sendToPrometheus(prometheusURL string, clubID string, count int) error {
+	metricLine := fmt.Sprintf("spirit_fullness_percentage{club=\"%s\"} %d\n", clubID, count)
 
-func buildDSN(host string, port int, user, password, dbname string) string {
-	u := &url.URL{
-		Scheme: "postgres",
-		User:   url.UserPassword(user, password),
-		Host:   fmt.Sprintf("%s:%d", host, port),
-		Path:   dbname,
+	resp, err := http.Post(prometheusURL, "text/plain", bytes.NewBufferString(metricLine))
+	if err != nil {
+		return fmt.Errorf("failed to send to prometheus: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("prometheus returned %d: %s", resp.StatusCode, string(body))
 	}
 
-	return u.String()
+	return nil
+}
+
+func collectAndSendFullness(token, clubID, prometheusURL string) (int, error) {
+	clubDetails, err := GetClubDetails(token, clubID)
+	if err != nil {
+		return 0, fmt.Errorf("can't get club details: %w", err)
+	}
+
+	clubFullness := int(clubDetails.Fullness * 100)
+	sendToPrometheus(prometheusURL, clubID, clubFullness)
+
+	return clubFullness, nil
 }
 
 func runApplication() error {
@@ -43,52 +55,23 @@ func runApplication() error {
 		return fmt.Errorf("can't get config: %w", err)
 	}
 
-	// ---
-
-	db, err := gorm.Open(
-		postgres.Open(
-			buildDSN(
-				cfg.Database.Address,
-				cfg.Database.Port,
-				cfg.Database.Username,
-				cfg.Database.Password,
-				cfg.Database.Database,
-			),
-		),
-		&gorm.Config{},
-	)
+	// first collect
+	clubFullness, err := collectAndSendFullness(cfg.Spirit.Token, cfg.Spirit.ClubID, cfg.Metrics.PrometheusURL)
 	if err != nil {
-		return fmt.Errorf("can't open database: %w", err)
+		log.Printf("can't collect and send fullness (1): %s\n", err)
+	} else {
+		log.Printf("written club fullness (1): %d%%\n", clubFullness)
 	}
 
-	err = db.AutoMigrate(&ClubFullness{})
-	if err != nil {
-		return fmt.Errorf("can't apply migrations: %w", err)
-	}
-
-	// ---
-
+	// scheduled collect
 	c := cron.New(cron.WithSeconds())
-
 	_, err = c.AddFunc(cfg.CronWithSeconds, func() {
-		clubDetails, err := GetClubDetails(cfg.Spirit.Token, cfg.Spirit.ClubID)
+		clubFullness, err := collectAndSendFullness(cfg.Spirit.Token, cfg.Spirit.ClubID, cfg.Metrics.PrometheusURL)
 		if err != nil {
-			log.Printf("can't get club details: %sw\n", err)
-			return
+			log.Printf("can't collect and send fullness (2): %s\n", err)
+		} else {
+			log.Printf("written club fullness (2): %d%%\n", clubFullness)
 		}
-
-		clubFullness := ClubFullness{
-			Timestamp: time.Now(),
-			Fullness:  int(clubDetails.Fullness * 100),
-		}
-
-		tx := db.Create(&clubFullness)
-		if tx.Error != nil {
-			log.Printf("can't save club fullness: %s\n", tx.Error)
-			return
-		}
-
-		log.Printf("written club fullness: %+v\n", clubFullness)
 	})
 	if err != nil {
 		return fmt.Errorf("can't add scheduled func: %w", err)

@@ -1,11 +1,6 @@
 spirit:
   token: !env_str "SPIRIT_TOKEN"
   club_id: !env_str "SPIRIT_CLUB"
-database:
-  # address: "127.0.0.1"
-  address: "postgres"
-  port: 5432
-  database: "spiritfit"
-  username: !env_str "DB_USERNAME"
-  password: !env_str "DB_PASSWORD"
+metrics:
+  prometheus_url: http://localhost:8428/api/v1/import/prometheus
 cron_with_seconds: "0 */10 * * * *"
