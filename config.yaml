@@ -2,5 +2,6 @@ spirit:
   token: !env_str "SPIRIT_TOKEN"
   club_id: !env_str "SPIRIT_CLUB"
 metrics:
-  prometheus_url: http://localhost:8428/api/v1/import/prometheus
+  # prometheus_url: http://localhost:8428/api/v1/import/prometheus
+  prometheus_url: http://victoriametrics:8428/api/v1/import/prometheus
 cron_with_seconds: "0 */10 * * * *"
