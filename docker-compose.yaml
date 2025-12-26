@@ -7,35 +7,49 @@ services:
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
     depends_on:
-      - victoriametrics
+      - postgres
     volumes:
       - ./config.yaml:/config.yaml
     restart: unless-stopped
 
-  victoriametrics:
-    image: victoriametrics/victoria-metrics:v1.132.0
-    ports:
-      - 8428:8428
-    volumes:
-      - vm_data:/victoria-metrics-data
-    restart: unless-stopped
-
-  vm-backup:
-    image: victoriametrics/vmbackup:v1.132.0
-    depends_on:
-      - victoriametrics
-    volumes:
-      - vm_data:/victoria-metrics-data:ro
-      - ./backup.sh:/backup.sh:ro
+  postgres:
+    image: postgres:15
+    container_name: postgres_db
     environment:
+      POSTGRES_DB: spiritfit
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PUBLIC_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d spiritfit"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-backup:
+    build: ./postgres-backup
+    restart: unless-stopped
+    environment:
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_USER: ${DB_USERNAME}
+      PG_PASSWORD: ${DB_PASSWORD}
+      PG_DATABASE: spiritfit
       DUMP_DIR: /dumps
       BACKUP_INTERVAL_SECONDS: 3600
       AWS_ENDPOINT_URL: https://storage.yandexcloud.net
       S3_BUCKET: ${S3_BUCKET}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-    entrypoint: ["sh", "/backup.sh"]
+    depends_on:
+      - postgres
+    volumes:
+      - ./dumps:/dumps
 
 volumes:
-  vm_data:
+  postgres_data:
     driver: local
