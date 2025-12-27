@@ -40,7 +40,7 @@ func collectAndWriteClubFullness(db *gorm.DB, spiritToken string, spiritClubID s
 	}
 
 	clubFullness := ClubFullness{
-		Timestamp: time.Now(),
+		Timestamp: time.Now().UTC(),
 		Fullness:  int(clubDetails.Fullness * 100),
 	}
 
